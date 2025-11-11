@@ -12,7 +12,11 @@
 //
 // Created by Luc Dion on 2017-07-17.
 
+#if TARGET_OS_IPHONE || TARGET_OS_TV
 #import <UIKit/UIKit.h>
+#elif TARGET_OS_OSX
+#import <AppKit/AppKit.h>
+#endif
 
 #import "UIView+Yoga.h"
 #import "YGLayout+Private.h"

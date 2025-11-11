@@ -8,10 +8,20 @@
 #import <yoga/Yoga.h>
 #import "YGLayout.h"
 
+#if TARGET_OS_IPHONE || TARGET_OS_TV
+@class UIView;
+#elif TARGET_OS_OSX
+@class NSView;
+#endif
+
 @interface YGLayout ()
 
 @property(nonatomic, assign, readonly) YGNodeRef node;
 
+#if TARGET_OS_IPHONE || TARGET_OS_TV
 - (instancetype)initWithView:(UIView*)view;
+#elif TARGET_OS_OSX
+- (instancetype)initWithView:(NSView*)view;
+#endif
 
 @end

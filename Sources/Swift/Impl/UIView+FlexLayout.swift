@@ -12,11 +12,16 @@
 //
 // Created by Luc Dion on 2017-07-17. 
 
+#if os(iOS) || os(tvOS)
 import UIKit
+#elseif os(macOS)
+import AppKit
+#endif
 
 @MainActor
 private var flexLayoutAssociatedObjectHandle = 72_399_923
 
+#if os(iOS) || os(tvOS)
 extension UIView {
     public var flex: Flex {
         if let flex = objc_getAssociatedObject(self, &flexLayoutAssociatedObjectHandle) as? Flex {
@@ -32,3 +37,20 @@ extension UIView {
         (objc_getAssociatedObject(self, &flexLayoutAssociatedObjectHandle) as? Flex) != nil
     }
 }
+#elseif os(macOS)
+extension NSView {
+    public var flex: Flex {
+        if let flex = objc_getAssociatedObject(self, &flexLayoutAssociatedObjectHandle) as? Flex {
+            return flex
+        } else {
+            let flex = Flex(view: self)
+            objc_setAssociatedObject(self, &flexLayoutAssociatedObjectHandle, flex, objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+            return flex
+        }
+    }
+
+    public var isFlexEnabled: Bool {
+        (objc_getAssociatedObject(self, &flexLayoutAssociatedObjectHandle) as? Flex) != nil
+    }
+}
+#endif
