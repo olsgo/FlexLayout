@@ -12,17 +12,17 @@
 //
 // Created by Luc Dion on 2017-07-17. 
 
-#if os(iOS) || os(tvOS)
-import UIKit
-#elseif os(macOS)
+#if os(macOS)
 import AppKit
+#else
+import UIKit
 #endif
 
 @MainActor
 private var flexLayoutAssociatedObjectHandle = 72_399_923
 
-#if os(iOS) || os(tvOS)
-extension UIView {
+#if os(macOS)
+extension NSView {
     public var flex: Flex {
         if let flex = objc_getAssociatedObject(self, &flexLayoutAssociatedObjectHandle) as? Flex {
             return flex
@@ -37,8 +37,8 @@ extension UIView {
         (objc_getAssociatedObject(self, &flexLayoutAssociatedObjectHandle) as? Flex) != nil
     }
 }
-#elseif os(macOS)
-extension NSView {
+#else
+extension UIView {
     public var flex: Flex {
         if let flex = objc_getAssociatedObject(self, &flexLayoutAssociatedObjectHandle) as? Flex {
             return flex

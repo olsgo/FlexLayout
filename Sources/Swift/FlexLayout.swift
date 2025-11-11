@@ -22,6 +22,15 @@ import AppKit
 import FlexLayoutYogaKit
 #endif
 
+#if os(iOS) || os(tvOS)
+public typealias FlexEdgeInsets = UIEdgeInsets
+public typealias FlexColor = UIColor
+#elseif os(macOS)
+public typealias FlexEdgeInsets = NSEdgeInsets
+public typealias FlexColor = NSColor
+#endif
+public typealias FlexDirectionalEdgeInsets = NSDirectionalEdgeInsets
+
 /**
  FlexLayout interface.
 
@@ -520,7 +529,7 @@ public final class Flex {
     }
     
     /**
-     AspectRatio is a property introduced by Yoga that don't exist in CSS. AspectRatio solves the problem of knowing 
+     AspectRatio is a property introduced by Yoga that doesn't exist in CSS. AspectRatio solves the problem of knowing
      one dimension of an element and an aspect ratio, this is very common when it comes to images, videos, and other
      media types. AspectRatio accepts any floating point value > 0, the default is undefined.
     
@@ -534,7 +543,7 @@ public final class Flex {
     }
     
     /**
-     AspectRatio is a property introduced by Yoga that don't exist in CSS. AspectRatio solves the problem of knowing
+     AspectRatio is a property introduced by Yoga that doesn't exist in CSS. AspectRatio solves the problem of knowing
      one dimension of an element and an aspect ratio, this is very common when it comes to images, videos, and other
      media types. AspectRatio accepts any floating point value > 0, the default is undefined.
     
@@ -542,9 +551,19 @@ public final class Flex {
      - Returns: Flex interface
     */
     @discardableResult
-    public func aspectRatio(of imageView: UIImageView) -> Flex {
-        if let imageSize = imageView.image?.size {
-            yoga.aspectRatio = imageSize.width / imageSize.height
+    public func aspectRatio(of imageView: FlexHostView) -> Flex {
+        var size = imageView.bounds.size
+        #if os(macOS)
+        if let imageView = imageView as? NSImageView, let image = imageView.image {
+            size = image.size
+        }
+        #else
+        if let imageView = imageView as? UIImageView, let image = imageView.image {
+            size = image.size
+        }
+        #endif
+        if size.height > 0 {
+            yoga.aspectRatio = size.width / size.height
         }
         return self
     }
@@ -895,11 +914,11 @@ public final class Flex {
     }
     
     /**
-     Set all margins using UIEdgeInsets.
+     Set all margins using the platform edge insets type (`UIEdgeInsets` on iOS/tvOS, `NSEdgeInsets` on macOS).
      This method is particularly useful to set all margins using `UIView.safeAreaInsets`.
      */
     @discardableResult
-    public func margin(_ insets: UIEdgeInsets) -> Flex {
+    public func margin(_ insets: FlexEdgeInsets) -> Flex {
         yoga.marginTop = YGValue(insets.top)
         yoga.marginLeft = YGValue(insets.left)
         yoga.marginBottom = YGValue(insets.bottom)
@@ -909,10 +928,10 @@ public final class Flex {
     
     /**
      Set margins using NSDirectionalEdgeInsets.
-     This method is particularly to set all margins using `UIView.directionalLayoutMargins`.
+     This method is particularly useful to set all margins using `UIView.directionalLayoutMargins`.
      */
     @discardableResult
-    public func margin(_ directionalInsets: NSDirectionalEdgeInsets) -> Flex {
+    public func margin(_ directionalInsets: FlexDirectionalEdgeInsets) -> Flex {
         yoga.marginTop = YGValue(directionalInsets.top)
         yoga.marginStart = YGValue(directionalInsets.leading)
         yoga.marginBottom = YGValue(directionalInsets.bottom)
@@ -1125,11 +1144,11 @@ public final class Flex {
     }
     
     /**
-     Set paddings using UIEdgeInsets.
+     Set all paddings using the platform edge insets type (`UIEdgeInsets` on iOS/tvOS, `NSEdgeInsets` on macOS).
      This method is particularly useful to set all paddings using `UIView.safeAreaInsets`.
      */
     @discardableResult
-    public func padding(_ insets: UIEdgeInsets) -> Flex {
+    public func padding(_ insets: FlexEdgeInsets) -> Flex {
         yoga.paddingTop = YGValue(insets.top)
         yoga.paddingLeft = YGValue(insets.left)
         yoga.paddingBottom = YGValue(insets.bottom)
@@ -1139,10 +1158,10 @@ public final class Flex {
     
     /**
      Set paddings using NSDirectionalEdgeInsets.
-     This method is particularly to set all paddings using `UIView.directionalLayoutMargins`.
+     This method is particularly useful to set all paddings using `UIView.directionalLayoutMargins`.
      */
     @discardableResult
-    public func padding(_ directionalInsets: NSDirectionalEdgeInsets) -> Flex {
+    public func padding(_ directionalInsets: FlexDirectionalEdgeInsets) -> Flex {
         yoga.paddingTop = YGValue(directionalInsets.top)
         yoga.paddingStart = YGValue(directionalInsets.leading)
         yoga.paddingBottom = YGValue(directionalInsets.bottom)
@@ -1272,13 +1291,16 @@ public final class Flex {
     /**
      Set the view background color.
     
-     - Parameter color: new color
+     - Parameter color: new color (`UIColor` on iOS/tvOS, `NSColor` on macOS)
      - Returns: flex interface
     */
     @discardableResult
-    public func backgroundColor(_ color: UIColor) -> Flex {
+    public func backgroundColor(_ color: FlexColor) -> Flex {
         if let host = self.view {
-            host.backgroundColor = color
+            #if os(macOS)
+            host.wantsLayer = true
+            #endif
+            host.layer?.backgroundColor = color.cgColor
             return self
         } else {
             preconditionFailure("Trying to modify deallocated host view")
@@ -1295,7 +1317,10 @@ public final class Flex {
     @discardableResult
     public func cornerRadius(_ value: CGFloat) -> Flex {
         if let host = self.view {
-            host.layer.cornerRadius = value
+            #if os(macOS)
+            host.wantsLayer = true
+            #endif
+            host.layer?.cornerRadius = value
             return self
         } else {
             preconditionFailure("Trying to modify deallocated host view")
@@ -1307,14 +1332,17 @@ public final class Flex {
 
      - Parameters:
        - width: border width
-       - color: border color
+       - color: border color (`UIColor` on iOS/tvOS, `NSColor` on macOS)
      - Returns: flex interface
      */
     @discardableResult
-    public func border(_ width: CGFloat, _ color: UIColor) -> Flex {
+    public func border(_ width: CGFloat, _ color: FlexColor) -> Flex {
         if let host = self.view {
-            host.layer.borderWidth = width
-            host.layer.borderColor = color.cgColor
+            #if os(macOS)
+            host.wantsLayer = true
+            #endif
+            host.layer?.borderWidth = width
+            host.layer?.borderColor = color.cgColor
             return self
         } else {
             preconditionFailure("Trying to modify deallocated host view")
