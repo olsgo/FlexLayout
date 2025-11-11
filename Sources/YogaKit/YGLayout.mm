@@ -267,7 +267,7 @@ static YGConfigRef globalConfig;
       [NSThread isMainThread],
       @"This method must be called on the main thread.");
   if (self.isEnabled) {
-    for (UIView* subview in self.view.subviews) {
+    for (YGView* subview in self.view.subviews) {
       YGLayout* const yoga = subview.yoga;
       if (yoga.isEnabled && yoga.isIncludedInLayout) {
         return NO;
@@ -389,6 +389,7 @@ YG_EDGE_PROPERTY(gap, Gap, Gap, YGGutterAll)
 
 #pragma mark - Private
 
+#if TARGET_OS_IPHONE || TARGET_OS_TV
 static float YGMeasureBaselineLabel(
     YGNodeConstRef node,
     const float width,
@@ -397,7 +398,9 @@ static float YGMeasureBaselineLabel(
     UILabel* view = (__bridge UILabel*) YGNodeGetContext(node);
     return view.font.ascender; // height + view.font.ascender for lastBaseline
 }
+#endif
 
+#if TARGET_OS_IPHONE || TARGET_OS_TV
 static float YGMeasureBaselineTextView(
     YGNodeConstRef node,
     const float width,
@@ -406,7 +409,9 @@ static float YGMeasureBaselineTextView(
     UITextView* view = (__bridge UITextView*) YGNodeGetContext(node);
     return view.font.ascender + view.contentInset.top + view.textContainerInset.top;
 }
+#endif
 
+#if TARGET_OS_IPHONE || TARGET_OS_TV
 static float YGMeasureBaselineTextField(
     YGNodeConstRef node,
     const float width,
@@ -424,6 +429,7 @@ static float YGMeasureBaselineTextField(
             return view.font.ascender + 7;
     }
 }
+#endif
 
 static YGSize YGMeasureView(
     YGNodeConstRef node,
@@ -445,12 +451,18 @@ static YGSize YGMeasureView(
   // the framework returns the existing size.
   //
   // See https://github.com/facebook/yoga/issues/606 for more information.
+#if TARGET_OS_IPHONE || TARGET_OS_TV
   if (!view.yoga.isBaseView || [view.subviews count] > 0) {
     sizeThatFits = [view sizeThatFits:(CGSize){
                                           .width = constrainedWidth,
                                           .height = constrainedHeight,
                                       }];
   }
+#elif TARGET_OS_OSX
+  if (!view.yoga.isBaseView || [view.subviews count] > 0) {
+    sizeThatFits = view.bounds.size;
+  }
+#endif
 
   return (YGSize){
       .width = (float) YGSanitizeMeasurement(

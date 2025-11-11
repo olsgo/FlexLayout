@@ -6,9 +6,7 @@
 //  Copyright © 2017 Mirego. All rights reserved.
 //
 
-#if os(iOS) || os(tvOS)
-import UIKit
-#elseif os(macOS)
+#if os(macOS)
 import AppKit
 #endif
 

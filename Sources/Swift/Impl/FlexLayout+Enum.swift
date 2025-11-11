@@ -12,9 +12,7 @@
 //
 // Created by Luc Dion on 2017-07-17.
 
-#if os(iOS) || os(tvOS)
-import UIKit
-#elseif os(macOS)
+#if os(macOS)
 import AppKit
 #endif
 
