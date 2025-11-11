@@ -12,7 +12,11 @@
 //
 // Created by Luc Dion on 2017-06-19.
 
+#if os(iOS) || os(tvOS)
 import UIKit
+#elseif os(macOS)
+import AppKit
+#endif
 
 #if SWIFT_PACKAGE
 import FlexLayoutYogaKit
@@ -20,23 +24,23 @@ import FlexLayoutYogaKit
 
 /**
  FlexLayout interface.
- 
- The interface is accessible from any UIView class instance:
- ``` 
+
+ The interface is accessible from any UIView (iOS/tvOS) or NSView (macOS) class instance:
+ ```
     label.flex.margin(10)
  ```
  */
 @MainActor
 public final class Flex {
-    
+
     //
     // MARK: Properties
     //
 
     /**
-     Flex items's UIView.
+     Flex items's host view (UIView on iOS/tvOS, NSView on macOS).
     */
-    public private(set) weak var view: UIView?
+    public private(set) weak var view: FlexHostView?
     private let yoga: YGLayout
     
     /**
@@ -46,10 +50,10 @@ public final class Flex {
         return yoga.intrinsicSize
     }
     
-    init(view: UIView) {
+    init(view: FlexHostView) {
         self.view = view
         self.yoga = view.yoga
-        
+
         // Enable flexbox and overwrite Yoga default values.
         yoga.isEnabled = true
     }
@@ -59,29 +63,29 @@ public final class Flex {
     //
     
     /**
-     Adds a flex item (`UIView`) to the receiver and returns the item's flex interface.
-     
-     This method internally creates a new `UIView` instance corresponding to the flex item,
+     Adds a flex item (view) to the receiver and returns the item's flex interface.
+
+     This method internally creates a new view instance corresponding to the flex item,
      and is useful for adding a flex item/container when you don't need to refer to it later.
-    
+
      - Returns: The flex interface corresponding to the added view.
      */
     @discardableResult
     public func addItem() -> Flex {
-        let view = UIView()
+        let view = FlexHostView()
         return addItem(view)
     }
-    
+
     /**
-     Adds a flex item (`UIView`) to the receiver and returns the item's flex interface.
-    
+     Adds a flex item (view) to the receiver and returns the item's flex interface.
+
      This method enables flexbox for `view` and adds it as a subview of the receiver's associated host view.
-    
+
      - Parameter view: The view to be added.
      - Returns: The flex interface corresponding to the added view.
      */
     @discardableResult
-    public func addItem(_ view: UIView) -> Flex {
+    public func addItem(_ view: FlexHostView) -> Flex {
         if let host = self.view {
             host.addSubview(view)
             return view.flex

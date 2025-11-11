@@ -8,6 +8,21 @@
 #import "UIView+Yoga.h"
 #import "YGLayout+Private.h"
 
+// Platform-specific typedefs
+#if TARGET_OS_IPHONE || TARGET_OS_TV
+  #define YGView UIView
+  #define YGScreen UIScreen
+  #define YGLabel UILabel
+  #define YGTextField UITextField
+  #define YGTextView UITextView
+#elif TARGET_OS_OSX
+  #define YGView NSView
+  #define YGScreen NSScreen
+  #define YGLabel NSTextField
+  #define YGTextField NSTextField
+  #define YGTextView NSTextView
+#endif
+
 #define YG_PROPERTY(type, lowercased_name, capitalized_name)      \
   -(type)lowercased_name {                                        \
     return YGNodeStyleGet##capitalized_name(self.node);           \
@@ -160,8 +175,8 @@ static YGConfigRef globalConfig;
 
 @interface YGLayout ()
 
-@property(nonatomic, weak, readonly) UIView* view;
-@property(nonatomic, assign, readonly) BOOL isUIView;
+@property(nonatomic, weak, readonly) YGView* view;
+@property(nonatomic, assign, readonly) BOOL isBaseView;
 
 @end
 
@@ -176,18 +191,23 @@ static YGConfigRef globalConfig;
   YGConfigSetExperimentalFeatureEnabled(
       globalConfig, YGExperimentalFeatureWebFlexBasis, true);
   YGConfigSetErrata(globalConfig, YGErrataClassic);
+#if TARGET_OS_IPHONE || TARGET_OS_TV
   YGConfigSetPointScaleFactor(globalConfig, [UIScreen mainScreen].scale);
+#elif TARGET_OS_OSX
+  YGConfigSetPointScaleFactor(globalConfig, [NSScreen mainScreen].backingScaleFactor);
+#endif
 }
 
-- (instancetype)initWithView:(UIView*)view {
+- (instancetype)initWithView:(YGView*)view {
   if (self = [super init]) {
     _view = view;
     _node = YGNodeNewWithConfig(globalConfig);
     YGNodeSetContext(_node, (__bridge void*)view);
     _isEnabled = NO;
     _isIncludedInLayout = YES;
-    _isUIView = [view isMemberOfClass:[UIView class]];
+    _isBaseView = [view isMemberOfClass:[YGView class]];
 
+#if TARGET_OS_IPHONE || TARGET_OS_TV
     if ([view isKindOfClass:[UILabel class]]) {
       if (!YGNodeHasBaselineFunc(_node)) {
         YGNodeSetBaselineFunc(_node, YGMeasureBaselineLabel);
@@ -205,6 +225,10 @@ static YGConfigRef globalConfig;
         YGNodeSetBaselineFunc(_node, YGMeasureBaselineTextField);
       }
     }
+#elif TARGET_OS_OSX
+    // On macOS, we don't set baseline functions for text controls
+    // as NSTextField and NSTextView have different baseline behavior
+#endif
   }
 
   return self;
@@ -412,16 +436,16 @@ static YGSize YGMeasureView(
   const CGFloat constrainedHeight =
       (heightMode == YGMeasureModeUndefined) ? CGFLOAT_MAX : height;
 
-  UIView* view = (__bridge UIView*)YGNodeGetContext(node);
+  YGView* view = (__bridge YGView*)YGNodeGetContext(node);
   CGSize sizeThatFits = CGSizeZero;
 
   // The default implementation of sizeThatFits: returns the existing size of
-  // the view. That means that if we want to layout an empty UIView, which
+  // the view. That means that if we want to layout an empty view, which
   // already has got a frame set, its measured size should be CGSizeZero, but
-  // UIKit returns the existing size.
+  // the framework returns the existing size.
   //
   // See https://github.com/facebook/yoga/issues/606 for more information.
-  if (!view.yoga.isUIView || [view.subviews count] > 0) {
+  if (!view.yoga.isBaseView || [view.subviews count] > 0) {
     sizeThatFits = [view sizeThatFits:(CGSize){
                                           .width = constrainedWidth,
                                           .height = constrainedHeight,
@@ -454,7 +478,7 @@ static CGFloat YGSanitizeMeasurement(
 
 static BOOL YGNodeHasExactSameChildren(
     const YGNodeRef node,
-    NSArray<UIView*>* subviews) {
+    NSArray<YGView*>* subviews) {
   if (YGNodeGetChildCount(node) != subviews.count) {
     return NO;
   }
@@ -468,7 +492,7 @@ static BOOL YGNodeHasExactSameChildren(
   return YES;
 }
 
-static void YGAttachNodesFromViewHierachy(UIView* const view) {
+static void YGAttachNodesFromViewHierachy(YGView* const view) {
   YGLayout* const yoga = view.yoga;
   const YGNodeRef node = yoga.node;
 
@@ -479,9 +503,9 @@ static void YGAttachNodesFromViewHierachy(UIView* const view) {
   } else {
     YGNodeSetMeasureFunc(node, NULL);
 
-    NSMutableArray<UIView*>* subviewsToInclude =
+    NSMutableArray<YGView*>* subviewsToInclude =
         [[NSMutableArray alloc] initWithCapacity:view.subviews.count];
-    for (UIView* subview in view.subviews) {
+    for (YGView* subview in view.subviews) {
       if (subview.yoga.isEnabled && subview.yoga.isIncludedInLayout) {
         [subviewsToInclude addObject:subview];
       }
@@ -499,7 +523,7 @@ static void YGAttachNodesFromViewHierachy(UIView* const view) {
       }
     }
 
-    for (UIView* const subview in subviewsToInclude) {
+    for (YGView* const subview in subviewsToInclude) {
       YGAttachNodesFromViewHierachy(subview);
     }
   }
@@ -517,7 +541,11 @@ static CGFloat YGRoundPixelValue(CGFloat value) {
   static CGFloat scale;
   static dispatch_once_t onceToken;
   dispatch_once(&onceToken, ^() {
+#if TARGET_OS_IPHONE || TARGET_OS_TV
     scale = [UIScreen mainScreen].scale;
+#elif TARGET_OS_OSX
+    scale = [NSScreen mainScreen].backingScaleFactor;
+#endif
   });
 
   return roundf(value * scale) / scale;
@@ -535,7 +563,7 @@ static CGPoint YGPointReplacingNanWithZero(CGPoint const value) {
   return result;
 }
 
-static void YGApplyLayoutToViewHierarchy(UIView* view, BOOL preserveOrigin) {
+static void YGApplyLayoutToViewHierarchy(YGView* view, BOOL preserveOrigin) {
   NSCAssert(
       [NSThread isMainThread],
       @"Framesetting should only be done on the main thread.");
